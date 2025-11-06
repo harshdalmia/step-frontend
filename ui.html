@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>By Collar — Trial Data Viewer</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --card: #12161b;
+      --muted: #9aa4af;
+      --text: #e7eef5;
+      --accent: #4da3ff;
+      --accent-2: #7cd992;
+      --danger: #ff6b6b;
+      --border: #1f2630;
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+      --radius: 16px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f7fb; --card:#ffffff; --muted:#5b6470; --text:#0f1720;
+        --border:#e7ebf0; --shadow: 0 8px 24px rgba(16,24,40,.08);
+      }
+    }
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0; background: radial-gradient(1200px 600px at 10% -10%, #18324d 0%, transparent 50%),
+                  radial-gradient(800px 400px at 120% 10%, #20343f 0%, transparent 45%),
+                  var(--bg);
+      color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      padding: 28px;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto }
+    .title {
+      font-size: 22px; font-weight: 700; letter-spacing: .2px; margin: 0 0 16px;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) , var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .form { display: grid; gap: 12px; grid-template-columns: 1fr 1fr 1fr auto; align-items: end }
+    .field { display: grid; gap: 6px }
+    label { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: .3px; text-transform: uppercase }
+    input {
+      height: 40px; border-radius: 12px; border: 1px solid var(--border); background: transparent;
+      color: var(--text); padding: 0 12px; outline: none;
+    }
+    input::placeholder { color: #7b8693; opacity: .9 }
+    button {
+      height: 40px; border-radius: 12px; border: 1px solid transparent; padding: 0 16px;
+      background: linear-gradient(180deg, var(--accent), #2c7dd4);
+      color: white; font-weight: 700; cursor: pointer; transition: transform .05s ease, filter .1s ease;
+    }
+    button:active { transform: translateY(1px) }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap }
+    .muted { color: var(--muted) }
+    .status { display:flex; align-items:center; gap:10px; margin-top:10px; min-height:24px }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--muted); font-size: 12px;
+    }
+    .pill strong { color: var(--text) }
+
+    .table-wrap {
+      margin-top: 16px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+      background: var(--card);
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 900px }
+    thead { position: sticky; top: 0; z-index: 1 }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top }
+    thead th {
+      position: sticky; top: 0; background: linear-gradient(180deg, rgba(255,255,255,.06), transparent), var(--card);
+      font-size: 12px; color: var(--muted);
+    }
+    tbody tr:hover { background: rgba(255,255,255,.03) }
+    code.k { background: rgba(77,163,255,.15); color: var(--accent); padding: 2px 6px; border-radius: 6px }
+
+    .scroll-x { overflow-x: auto }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap }
+    .right { display:flex; gap:8px }
+    .ghost {
+      background: transparent; border:1px solid var(--border); color: var(--text);
+    }
+    .success { color: var(--accent-2) }
+    .error { color: var(--danger) }
+
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid #ffffff30; border-top-color: #fff; border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg) } }
+
+    @media (max-width: 900px) {
+      .form { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">Collar Data Viewer <span class="muted">/by-collar</span></h1>
+
+    <div class="card">
+      <form id="qform" class="form">
+        <div class="field">
+          <label for="collar_id">Collar ID</label>
+          <input id="collar_id" name="collar_id" placeholder="e.g. C123" required />
+        </div>
+        <div class="field">
+          <label for="limit">Limit</label>
+          <input id="limit" name="limit" type="number" min="1" max="1000" value="100" />
+        </div>
+        <div class="field">
+          <label for="offset">Offset</label>
+          <input id="offset" name="offset" type="number" min="0" value="0" />
+        </div>
+        <div class="actions">
+          <button type="submit">Fetch</button>
+          <button type="button" id="prev" class="ghost">◀ Prev</button>
+          <button type="button" id="next" class="ghost">Next ▶</button>
+          <button type="button" id="csv" class="ghost">Download CSV</button>
+        </div>
+      </form>
+
+      <div class="status" id="status">
+        <span class="pill">API: <code class="k">/by-collar</code></span>
+        <span class="pill" id="pillCount">Rows: <strong>0</strong></span>
+        <span class="pill" id="pillTime"></span>
+        <span id="loading" style="display:none" class="spinner" aria-label="Loading"></span>
+        <span id="msg" class="muted"></span>
+      </div>
+
+      <div class="table-wrap scroll-x" id="tableWrap" style="display:none">
+        <table id="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Input Time</th>
+              <th>Output Time</th>
+              <th>Collar</th>
+              <th>Dog</th>
+              <th>Breed</th>
+              <th>Coat</th>
+              <th>Height</th>
+              <th>Weight</th>
+              <th>Sex</th>
+              <th>Collar Orientation</th>
+              <th>Temp IR (°C)</th>
+              <th>Temp Out (°C)</th>
+              <th>Stepcount</th>
+              <th>Calories</th>
+              <th>input_id</th>
+              <th>output_id</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // If frontend & API are same origin, this stays as '' (relative).
+    // If API is elsewhere, set API_BASE = 'https://your-service.onrender.com'
+    const API_BASE = 'https://myperro-step-1.onrender.com';
+
+    const $ = (sel) => document.querySelector(sel);
+    const qs = (name) => new URLSearchParams(location.search).get(name);
+
+    const form = $('#qform');
+    const collarInput = $('#collar_id');
+    const limitInput = $('#limit');
+    const offsetInput = $('#offset');
+    const tbody = $('#tbody');
+    const tableWrap = $('#tableWrap');
+    const pillCount = $('#pillCount strong');
+    const pillTime = $('#pillTime');
+    const msg = $('#msg');
+    const loading = $('#loading');
+
+    const prevBtn = $('#prev');
+    const nextBtn = $('#next');
+    const csvBtn  = $('#csv');
+
+    // hydrate from URL params (nice for sharing links)
+    (function restoreFromQuery() {
+      if (qs('collar_id')) collarInput.value = qs('collar_id');
+      if (qs('limit'))     limitInput.value   = qs('limit');
+      if (qs('offset'))    offsetInput.value  = qs('offset');
+      if (collarInput.value) fetchRows();
+    })();
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      offsetInput.value = Math.max(0, parseInt(offsetInput.value || '0', 10));
+      fetchRows();
+      pushState();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      const limit = clampInt(limitInput.value, 1, 1000, 100);
+      let offset = Math.max(0, (parseInt(offsetInput.value || '0', 10) - limit));
+      offsetInput.value = offset;
+      fetchRows();
+      pushState();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      const limit = clampInt(limitInput.value, 1, 1000, 100);
+      let offset = Math.max(0, (parseInt(offsetInput.value || '0', 10) + limit));
+      offsetInput.value = offset;
+      fetchRows();
+      pushState();
+    });
+
+    csvBtn.addEventListener('click', downloadCSV);
+
+    function clampInt(v, min, max, fallback) {
+      const n = parseInt(v, 10);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function fmtNum(n) {
+      return (n === null || n === undefined || n === '') ? '' : Number(n);
+    }
+
+    function fmtTime(s) {
+      if (!s) return '';
+      const d = new Date(s);
+      return isNaN(d) ? '' : d.toLocaleString();
+    }
+
+    async function fetchRows() {
+      const collar_id = collarInput.value.trim();
+      const limit  = clampInt(limitInput.value, 1, 1000, 100);
+      const offset = Math.max(0, parseInt(offsetInput.value || '0', 10));
+
+      if (!collar_id) {
+        msg.textContent = 'Enter a collar_id to query.';
+        return;
+      }
+
+      // UI state
+      loading.style.display = 'inline-block';
+      msg.textContent = '';
+      pillTime.textContent = '';
+      tbody.innerHTML = '';
+      tableWrap.style.display = 'none';
+
+      const t0 = performance.now();
+      try {
+        const url = `${API_BASE}/by-collar?` + new URLSearchParams({ collar_id, limit, offset });
+        const res = await fetch(url);
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status}: ${txt}`);
+        }
+        const data = await res.json();
+
+        const rows = Array.isArray(data.data) ? data.data : [];
+        pillCount.textContent = rows.length;
+        pillTime.innerHTML = `<span class="pill">Query time: <strong>${(performance.now() - t0).toFixed(1)} ms</strong></span>`;
+
+        if (!rows.length) {
+          msg.innerHTML = `<span class="muted">No rows found for <code class="k">${collar_id}</code> (offset ${offset}).</span>`;
+          return;
+        }
+
+        // Render table
+        const fr = document.createDocumentFragment();
+        rows.forEach((r, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${offset + i + 1}</td>
+            <td>${fmtTime(r.input_created_at)}</td>
+            <td>${fmtTime(r.output_created_at)}</td>
+            <td><code class="k">${r.collar_id ?? ''}</code></td>
+            <td>${r.dog_name ?? ''}</td>
+            <td>${r.breed ?? ''}</td>
+            <td>${r.coat_type ?? ''}</td>
+            <td>${fmtNum(r.height)}</td>
+            <td>${fmtNum(r.weight)}</td>
+            <td>${r.sex ?? ''}</td>
+            <td>${r.collar_orientation ?? ''}</td>
+            <td>${fmtNum(r.temperature_irgun)}</td>
+            <td>${fmtNum(r.temperature)}</td>
+            <td>${fmtNum(r.stepcount)}</td>
+            <td>${fmtNum(r.caloriecount)}</td>
+            <td>${r.input_id ?? ''}</td>
+            <td>${r.output_id ?? ''}</td>
+          `;
+          fr.appendChild(tr);
+        });
+        tbody.appendChild(fr);
+        tableWrap.style.display = 'block';
+      } catch (err) {
+        console.error(err);
+        msg.innerHTML = `<span class="error">Error: ${err.message}</span>`;
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    function pushState() {
+      const q = new URLSearchParams({
+        collar_id: collarInput.value.trim(),
+        limit: limitInput.value,
+        offset: offsetInput.value
+      });
+      const href = `${location.pathname}?${q.toString()}`;
+      history.replaceState({}, '', href);
+    }
+
+    function downloadCSV() {
+      // Build CSV from the current table DOM for simplicity
+      const rows = [['#','Input Time','Output Time','Collar','Dog','Breed','Coat','Height','Weight','Sex','Collar Orientation','Temp IR (C)','Temp Out (C)','Stepcount','Calories','input_id','output_id']];
+      [...tbody.querySelectorAll('tr')].forEach(tr => {
+        const cols = [...tr.querySelectorAll('td')].map(td => {
+          const t = td.textContent ?? '';
+          // escape CSV
+          return `"${t.replace(/"/g,'""')}"`;
+        });
+        rows.push(cols);
+      });
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `by-collar_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
